@@ -19,19 +19,19 @@ from typing import List, Tuple, Union
 from serial import EIGHTBITS, PARITY_NONE, STOPBITS_ONE, Serial, SerialException
 
 
-class MeasurementValueOverError(BaseException):
+class MeasurementValueOverError(Exception):
     pass
 
 
-class LowLuminanceError(BaseException):
+class LowLuminanceError(Exception):
     pass
 
 
-class LowBatteryError(BaseException):
+class LowBatteryError(Exception):
     pass
 
 
-class ValueOutOfRangeError(BaseException):
+class ValueOutOfRangeError(Exception):
     pass
 
 

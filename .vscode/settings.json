@@ -14,7 +14,7 @@
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
     "editor.codeActionsOnSave": {
-        "source.organizeImports": false
+        "source.organizeImports": "never"
     },
     "python.testing.autoTestDiscoverOnSaveEnabled": true
 }
