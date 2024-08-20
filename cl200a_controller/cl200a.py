@@ -110,7 +110,7 @@ class CL200A:
         for _ in range(2):
             # set CL-200A to EXT mode
             try:
-                CL200Utils.write_serial_port(ser=self.ser, cmd=cmd, sleep_time=0.125)
+                CL200Utils.write_serial_port(ser=self.ser, cmd=cmd, sleep_time=0.175)
             except SerialException as exc:
                 raise exc
             ext_mode_err = self.ser.readline().decode("ascii")
