@@ -171,10 +171,13 @@ class CL200A:
 
     # pylint: disable=invalid-name
     # the names ev, y, z are used in the documentation
-    def get_ev_x_y(self) -> Tuple[float, float, float, datetime]:
+    def get_ev_x_y(self, enable_cf=True) -> Tuple[float, float, float, datetime]:
         """get_ev_x_y
         read the most recent measurement data from the CL-200A to the PC in terms of Ev, x, y
         (command 02)
+
+        Args:
+            enable_cf (bool): enable CF: correction function.
 
         Raises:
             ValueError: returned value from luxmeter is not valid
@@ -183,7 +186,10 @@ class CL200A:
             float: measured value
         """
 
-        result, measured_time = self._perform_measurement(self.cmd_dict["command_02"])
+        if enable_cf:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_02c"])
+        else:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_02"])
         # Convert Measurement
         ev, x, y = CL200Utils.extract_ev_x_y(result)
 
@@ -193,10 +199,13 @@ class CL200A:
 
     # pylint: disable=invalid-name
     # the names x, y, z are used in the documentation
-    def get_x_y_z(self) -> Tuple[float, float, float, datetime]:
+    def get_x_y_z(self, enable_cf=True) -> Tuple[float, float, float, datetime]:
         """get_x_y_z
         read the most recent measurement data from the CL-200A to the PC in terms of X, Y, Z.
         (command 01)
+
+        Args:
+            enable_cf (bool): enable CF: correction function.
 
         Raises:
             ValueError: returned value from luxmeter is not valid
@@ -204,7 +213,10 @@ class CL200A:
         Returns:
             float: measured value
         """
-        result, measured_time = self._perform_measurement(self.cmd_dict["command_01"])
+        if enable_cf:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_01c"])
+        else:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_01"])
         x, y, z = CL200Utils.extract_x_y_z(result)
 
         self.logger.debug(f"X: {x}, Y: {y}, Z: {z}")
@@ -213,10 +225,13 @@ class CL200A:
 
     # pylint: disable=invalid-name
     # the names ev, u, v are used in the documentation
-    def get_ev_u_v(self) -> Tuple[float, float, float, datetime]:
+    def get_ev_u_v(self, enable_cf=True) -> Tuple[float, float, float, datetime]:
         """get_ev_tcp_delta_uv
         To read the most recent measurement data from the CL-200A to the PC in terms of Ev, u', v'.
         (command 03)
+
+        Args:
+            enable_cf (bool): enable CF: correction function.
 
         Raises:
             ValueError: returned value from luxmeter is not valid
@@ -224,7 +239,10 @@ class CL200A:
         Returns:
             float: measured value
         """
-        result, measured_time = self._perform_measurement(self.cmd_dict["command_03"])
+        if enable_cf:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_03c"])
+        else:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_03"])
         ev, u, v = CL200Utils.extract_ev_u_v(result)
 
         self.logger.debug(f"Illuminance: {ev} lux, u: {u}, v: {v}")
@@ -233,11 +251,14 @@ class CL200A:
 
     # pylint: disable=invalid-name
     # the names ev, tcp, delta_uv are used in the documentation
-    def get_ev_tcp_delta_uv(self) -> Tuple[float, float, float, datetime]:
+    def get_ev_tcp_delta_uv(self, enable_cf=True) -> Tuple[float, float, float, datetime]:
         """get_ev_tcp_delta_uv
         To read the most recent measurement data
         from the CL-200A to the PC in terms of EV, TCP, Δuv.
         (command 08)
+
+        Args:
+            enable_cf (bool): enable CF: correction function.
 
         Raises:
             ValueError: returned value from luxmeter is not valid
@@ -245,7 +266,10 @@ class CL200A:
         Returns:
             float: measured value
         """
-        result, measured_time = self._perform_measurement(self.cmd_dict["command_08"])
+        if enable_cf:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_08c"])
+        else:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_08"])
         ev, tcp, delta_uv = CL200Utils.extract_ev_tcp_delta_uv(result)
 
         self.logger.debug(f"Illuminance: {ev} lux, TCP: {tcp}, DeltaUV: {delta_uv}")
