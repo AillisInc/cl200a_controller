@@ -172,6 +172,7 @@ class CL200Utils:
 
         sleep(sleep_time)
         ser.reset_input_buffer()
+        ser.reset_output_buffer()
 
     @classmethod
     def check_measurement(cls, result: str) -> None:
