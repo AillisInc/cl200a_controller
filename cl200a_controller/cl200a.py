@@ -168,7 +168,7 @@ class CL200A:
                 CL200Utils.check_measurement(result)
             except ValueOutOfRangeError:
                 if retry_count + 1 < 4:
-                    self.logger.info(f"This error can be ignored. (Measurement range switch retry {retry_count + 1}/3)")
+                    self.logger.info(f"This ValueOutOfRangeError can be ignored. (Measurement range switch retry {retry_count + 1}/3)")
                     continue
                 else:
                     self.logger.error("Reached the maximum retry of measurement range switch.")
