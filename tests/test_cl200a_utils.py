@@ -7,6 +7,7 @@ from cl200a_controller.cl200a_utils import (
     LowLuminanceError,
     MeasurementValueOverError,
     ValueOutOfRangeError,
+    RangeUncertainError,
 )
 
 
@@ -91,12 +92,17 @@ class TestCL200Utils:
         with pytest.raises(LowLuminanceError):
             CL200Utils.check_measurement(result)
 
-    def test_check_measurement_7(self):
-        result = "xxxxxx7xxxxxx"
+    def test_check_range_0(self):
+        result = "xxxxxxx0xxxxx"
+        with pytest.raises(RangeUncertainError):
+            CL200Utils.check_measurement(result)
+
+    def test_check_range_6(self):
+        result = "xxxxxxx6xxxxx"
         with pytest.raises(ValueOutOfRangeError):
             CL200Utils.check_measurement(result)
 
-    def test_check_measurement_8(self):
+    def test_check_battery_1(self):
         result = "xxxxxxxx1xxxx"
         with pytest.raises(LowBatteryError):
             CL200Utils.check_measurement(result)
