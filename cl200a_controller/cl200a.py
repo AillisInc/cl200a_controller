@@ -4,7 +4,7 @@ from typing import Tuple
 
 from serial import PARITY_EVEN, SEVENBITS, SerialException
 
-from cl200a_controller.cl200a_utils import CL200Utils
+from cl200a_controller.cl200a_utils import CL200Utils, ValueOutOfRangeError
 from cl200a_controller.logger import Logger
 from cl200a_controller.serial_utils import SerialUtils
 
@@ -148,24 +148,36 @@ class CL200A:
         self.ser.reset_output_buffer()
 
         # Perform measurement
-        cmd_ext = CL200Utils.cmd_formatter(self.cmd_dict["command_40r"])
-        cmd_read = CL200Utils.cmd_formatter(read_cmd)
-        CL200Utils.write_serial_port(ser=self.ser, cmd=cmd_ext, sleep_time=0.5)
-        # read data
-        CL200Utils.write_serial_port(ser=self.ser, cmd=cmd_read, sleep_time=0)
-        measured_time = datetime.now()
-        try:
-            serial_ret = self.ser.readline()
-            if len(serial_ret) == 0:
-                raise SerialException("No data received from CL-200A")
+        for retry_count in range(4):
+            cmd_ext = CL200Utils.cmd_formatter(self.cmd_dict["command_40r"])
+            cmd_read = CL200Utils.cmd_formatter(read_cmd)
+            CL200Utils.write_serial_port(ser=self.ser, cmd=cmd_ext, sleep_time=0.5)
+            # read data
+            CL200Utils.write_serial_port(ser=self.ser, cmd=cmd_read, sleep_time=0)
+            measured_time = datetime.now()
+            try:
+                serial_ret = self.ser.readline()
+                if len(serial_ret) == 0:
+                    raise SerialException("No data received from CL-200A")
 
-            result = serial_ret.decode("ascii")
-        except SerialException as exc:
-            raise ConnectionAbortedError("Connection to Luxmeter was lost.") from exc
+                result = serial_ret.decode("ascii")
+            except SerialException as exc:
+                raise ConnectionAbortedError("Connection to Luxmeter was lost.") from exc
 
-        CL200Utils.check_measurement(result)
+            try:
+                CL200Utils.check_measurement(result)
+            except ValueOutOfRangeError:
+                if retry_count + 1 < 4:
+                    self.logger.info(f"This ValueOutOfRangeError can be ignored. (Measurement range switch retry {retry_count + 1}/3)")
+                    continue
+                else:
+                    self.logger.error("Reached the maximum retry of measurement range switch.")
+                    raise
+            except Exception:
+                raise
 
-        self.logger.debug(f"Got raw data: {result.rstrip()}")
+            self.logger.debug(f"Got raw data: {result.rstrip()}")
+            break
 
         return result, measured_time
 
