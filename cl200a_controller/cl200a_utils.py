@@ -40,10 +40,15 @@ class CL200Utils:
 
     cl200a_cmd_dict = {
         "command_01": "00011200",
+        "command_01c": "00011300",
         "command_02": "00021200",
+        "command_02c": "00021300",
         "command_03": "00031200",
+        "command_03c": "00031300",
         "command_08": "00081200",
+        "command_08c": "00081300",
         "command_15": "00151200",
+        "command_15c": "00151300",
         "command_40": "004010  ",
         "command_40r": "994021  ",
         "command_45": "00451000",
@@ -167,6 +172,7 @@ class CL200Utils:
 
         sleep(sleep_time)
         ser.reset_input_buffer()
+        ser.reset_output_buffer()
 
     @classmethod
     def check_measurement(cls, result: str) -> None:
