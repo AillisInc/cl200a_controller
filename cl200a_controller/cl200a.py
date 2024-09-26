@@ -4,7 +4,7 @@ from typing import Tuple
 
 from serial import PARITY_EVEN, SEVENBITS, SerialException
 
-from cl200a_controller.cl200a_utils import CL200Utils
+from cl200a_controller.cl200a_utils import CL200Utils, ValueOutOfRangeError
 from cl200a_controller.logger import Logger
 from cl200a_controller.serial_utils import SerialUtils
 
@@ -110,7 +110,7 @@ class CL200A:
         for _ in range(2):
             # set CL-200A to EXT mode
             try:
-                CL200Utils.write_serial_port(ser=self.ser, cmd=cmd, sleep_time=0.125)
+                CL200Utils.write_serial_port(ser=self.ser, cmd=cmd, sleep_time=0.175)
             except SerialException as exc:
                 raise exc
             ext_mode_err = self.ser.readline().decode("ascii")
@@ -148,33 +148,48 @@ class CL200A:
         self.ser.reset_output_buffer()
 
         # Perform measurement
-        cmd_ext = CL200Utils.cmd_formatter(self.cmd_dict["command_40r"])
-        cmd_read = CL200Utils.cmd_formatter(read_cmd)
-        CL200Utils.write_serial_port(ser=self.ser, cmd=cmd_ext, sleep_time=0.5)
-        # read data
-        CL200Utils.write_serial_port(ser=self.ser, cmd=cmd_read, sleep_time=0)
-        measured_time = datetime.now()
-        try:
-            serial_ret = self.ser.readline()
-            if len(serial_ret) == 0:
-                raise SerialException("No data received from CL-200A")
+        for retry_count in range(4):
+            cmd_ext = CL200Utils.cmd_formatter(self.cmd_dict["command_40r"])
+            cmd_read = CL200Utils.cmd_formatter(read_cmd)
+            CL200Utils.write_serial_port(ser=self.ser, cmd=cmd_ext, sleep_time=0.5)
+            # read data
+            CL200Utils.write_serial_port(ser=self.ser, cmd=cmd_read, sleep_time=0)
+            measured_time = datetime.now()
+            try:
+                serial_ret = self.ser.readline()
+                if len(serial_ret) == 0:
+                    raise SerialException("No data received from CL-200A")
 
-            result = serial_ret.decode("ascii")
-        except SerialException as exc:
-            raise ConnectionAbortedError("Connection to Luxmeter was lost.") from exc
+                result = serial_ret.decode("ascii")
+            except SerialException as exc:
+                raise ConnectionAbortedError("Connection to Luxmeter was lost.") from exc
 
-        CL200Utils.check_measurement(result)
+            try:
+                CL200Utils.check_measurement(result)
+            except ValueOutOfRangeError:
+                if retry_count + 1 < 4:
+                    self.logger.info(f"This ValueOutOfRangeError can be ignored. (Measurement range switch retry {retry_count + 1}/3)")
+                    continue
+                else:
+                    self.logger.error("Reached the maximum retry of measurement range switch.")
+                    raise
+            except Exception:
+                raise
 
-        self.logger.debug(f"Got raw data: {result.rstrip()}")
+            self.logger.debug(f"Got raw data: {result.rstrip()}")
+            break
 
         return result, measured_time
 
     # pylint: disable=invalid-name
     # the names ev, y, z are used in the documentation
-    def get_ev_x_y(self) -> Tuple[float, float, float, datetime]:
+    def get_ev_x_y(self, enable_cf=True) -> Tuple[float, float, float, datetime]:
         """get_ev_x_y
         read the most recent measurement data from the CL-200A to the PC in terms of Ev, x, y
         (command 02)
+
+        Args:
+            enable_cf (bool): enable CF: correction function.
 
         Raises:
             ValueError: returned value from luxmeter is not valid
@@ -183,7 +198,10 @@ class CL200A:
             float: measured value
         """
 
-        result, measured_time = self._perform_measurement(self.cmd_dict["command_02"])
+        if enable_cf:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_02c"])
+        else:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_02"])
         # Convert Measurement
         ev, x, y = CL200Utils.extract_ev_x_y(result)
 
@@ -193,10 +211,13 @@ class CL200A:
 
     # pylint: disable=invalid-name
     # the names x, y, z are used in the documentation
-    def get_x_y_z(self) -> Tuple[float, float, float, datetime]:
+    def get_x_y_z(self, enable_cf=True) -> Tuple[float, float, float, datetime]:
         """get_x_y_z
         read the most recent measurement data from the CL-200A to the PC in terms of X, Y, Z.
         (command 01)
+
+        Args:
+            enable_cf (bool): enable CF: correction function.
 
         Raises:
             ValueError: returned value from luxmeter is not valid
@@ -204,7 +225,10 @@ class CL200A:
         Returns:
             float: measured value
         """
-        result, measured_time = self._perform_measurement(self.cmd_dict["command_01"])
+        if enable_cf:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_01c"])
+        else:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_01"])
         x, y, z = CL200Utils.extract_x_y_z(result)
 
         self.logger.debug(f"X: {x}, Y: {y}, Z: {z}")
@@ -213,10 +237,13 @@ class CL200A:
 
     # pylint: disable=invalid-name
     # the names ev, u, v are used in the documentation
-    def get_ev_u_v(self) -> Tuple[float, float, float, datetime]:
+    def get_ev_u_v(self, enable_cf=True) -> Tuple[float, float, float, datetime]:
         """get_ev_tcp_delta_uv
         To read the most recent measurement data from the CL-200A to the PC in terms of Ev, u', v'.
         (command 03)
+
+        Args:
+            enable_cf (bool): enable CF: correction function.
 
         Raises:
             ValueError: returned value from luxmeter is not valid
@@ -224,7 +251,10 @@ class CL200A:
         Returns:
             float: measured value
         """
-        result, measured_time = self._perform_measurement(self.cmd_dict["command_03"])
+        if enable_cf:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_03c"])
+        else:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_03"])
         ev, u, v = CL200Utils.extract_ev_u_v(result)
 
         self.logger.debug(f"Illuminance: {ev} lux, u: {u}, v: {v}")
@@ -233,11 +263,14 @@ class CL200A:
 
     # pylint: disable=invalid-name
     # the names ev, tcp, delta_uv are used in the documentation
-    def get_ev_tcp_delta_uv(self) -> Tuple[float, float, float, datetime]:
+    def get_ev_tcp_delta_uv(self, enable_cf=True) -> Tuple[float, float, float, datetime]:
         """get_ev_tcp_delta_uv
         To read the most recent measurement data
         from the CL-200A to the PC in terms of EV, TCP, Δuv.
         (command 08)
+
+        Args:
+            enable_cf (bool): enable CF: correction function.
 
         Raises:
             ValueError: returned value from luxmeter is not valid
@@ -245,7 +278,10 @@ class CL200A:
         Returns:
             float: measured value
         """
-        result, measured_time = self._perform_measurement(self.cmd_dict["command_08"])
+        if enable_cf:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_08c"])
+        else:
+            result, measured_time = self._perform_measurement(self.cmd_dict["command_08"])
         ev, tcp, delta_uv = CL200Utils.extract_ev_tcp_delta_uv(result)
 
         self.logger.debug(f"Illuminance: {ev} lux, TCP: {tcp}, DeltaUV: {delta_uv}")

@@ -35,15 +35,24 @@ class ValueOutOfRangeError(Exception):
     pass
 
 
+class RangeUncertainError(Exception):
+    pass
+
+
 class CL200Utils:
     skip_connection_check = False
 
     cl200a_cmd_dict = {
         "command_01": "00011200",
+        "command_01c": "00011300",
         "command_02": "00021200",
+        "command_02c": "00021300",
         "command_03": "00031200",
+        "command_03c": "00031300",
         "command_08": "00081200",
+        "command_08c": "00081300",
         "command_15": "00151200",
+        "command_15c": "00151300",
         "command_40": "004010  ",
         "command_40r": "994021  ",
         "command_45": "00451000",
@@ -167,6 +176,7 @@ class CL200Utils:
 
         sleep(sleep_time)
         ser.reset_input_buffer()
+        ser.reset_output_buffer()
 
     @classmethod
     def check_measurement(cls, result: str) -> None:
@@ -180,10 +190,30 @@ class CL200Utils:
             LowBatteryError: raise when the battery is low.
             LowLuminanceError: raise when the luminance is low.
         """
+        # Check range status
+        if result[7] == "0":
+            err = (
+                "Range information uncertain\n"
+                + "Measurement could not be taken because range information could not be determined. "
+                + "The wait may be inappropriate for any of the commands sent or received prior to this command. "
+                + "Set an appropriate timeout and retry the measurement."
+            )
+            raise RangeUncertainError(err)
+        if result[7] == "6":
+            err = (
+                "The TCP, Δuv measured values are out of range\n"
+                + "Could not measure at the proper range; retry the EXT measurement (command 40). "
+                + "The next measurement will automatically switch ranges "
+                + "(CL-200A uses four different ranges, so you may have to redo the measurement up to three times). "
+                + "Note that the measured value when this error occurs is the previous measurement value, "
+                + "so do not use it."
+            )
+            raise ValueOutOfRangeError(err)
+
+        # Check error information
         if result[6] in ["1", "2", "3"]:
             err = "Switch off the CL-200A and then switch it back on"
             raise ConnectionResetError(err)
-
         if result[6] == "5":
             err = (
                 "Measurement value over error. "
@@ -196,13 +226,8 @@ class CL200Utils:
                 "for determining chromaticity"
             )
             raise LowLuminanceError(err)
-        if result[6] == "7":
-            err = "The TCP, Δuv measured values are out of range"
-            raise ValueOutOfRangeError(err)
 
-        # if result[7] == '6':
-        #     err= 'Switch off the CL-200A and then switch it back on'
-        #     raise Exception(err)
+        # Check battery status
         if result[8] == "1":
             err = (
                 "Low battery\n"
